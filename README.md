@@ -2,16 +2,20 @@
 - Source code for wireless notification from soil moisture sensor module on ESP32 to a mobile device with BLE capabilities.
 - For ESP-IDF using Arduino as a component.
 
+## Hardware
+- x1 NodeMCU ESP-32S
+- x1 Capacitive Soil Moisture Sensor v2.0
+- Some jumper wires
+
+## Software
+- ESP-IDF
+- MIT App Inventor
+
 ## How To Use
-1. Make a new project with `esp-idf`
-2. Add `espressif/arduino-esp32` as a dependency
-3. Build; then change `CONFIG_FREERTOS_HZ` to `1000` or whatever the previous error from build says
-4. In the `menuconfig`, turn on `Autostart Arduino setup and loop on boot`
-    - Also turn on `Component config/Bluetooth`
-5. Replace `<project>/main/<project>.c` with this repos's src file
-6. Make sure that the extensions for the main src file is `.cpp`, since we are using Arduino as a component
-    - Also make sure to adjust the src file in `<project>/main/CMakeLists.txt`
-7. Should be ready to flash
+1. Set-up BLE server on the ESP-32
+2. Attach Soil Moisture Sensor module
+    - The `SVP` pin (`GPIO 36`) is used here for the AOUT
+3. Power ESP-32 on and connect with the APK.
 
 > [!NOTE]
 > **Latest ESP-IDF version might be unable to build this as the latest espressif/arduino-esp32 repo depends on <5.3.something.**
@@ -25,3 +29,5 @@
 [espressif/arduino-esp/libraries/BLE/examples/Notify](https://github.com/espressif/arduino-esp32/tree/master/libraries/BLE/examples/Notify)
 
 [ESP32 - Capacitive Soil Moisture Sensor Tutorial](https://esp32io.com/tutorials/esp32-soil-moisture-sensor) 
+
+[MIT App Inventor: BLE Extension](https://iot.appinventor.mit.edu/iot/reference/bluetoothle) 
