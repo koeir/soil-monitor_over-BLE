@@ -1,43 +1,54 @@
-#include <Arduino.h>
 #include "HardwareSerial.h"
 #include "WString.h"
 #include "esp32-hal-adc.h"
 #include "esp32-hal.h"
 #include "soc/gpio_num.h"
+#include <Arduino.h>
 #include <BLE2901.h>
 #include <BLE2902.h>
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
+#include <cstdint>
 
-#define BAUDRATE 115200
+#define BAUDRATE  115200
+#define CACHE_MAX 10
+#define INDEX_WRAP(x)                                                          \
+    ((x + CACHE_MAX - 1) %                                                     \
+     CACHE_MAX) // makes sure than when the count resets to zero, the reading is
+                // still read from the last index
+#define LOWERBYTE(x) (x & 0xFF)
+#define UPPERBYTE(x) ((x >> 8) & 0xFF)
 
-// BLE --------------
+// BLE -----------------------------------
 BLEServer         *pServer         = NULL;
 BLECharacteristic *pCharacteristic = NULL;
 BLE2901           *descriptor_2901 = NULL;
 
-bool     deviceConnected    = false;
-bool     oldDeviceConnected = false;
-bool     clientWrote        = false;
-uint32_t value              = 0;
+bool deviceConnected    = false;
+bool oldDeviceConnected = false;
+bool clientWrote        = false;
 
 // See the following for generating UUIDs:
 // https://www.uuidgenerator.net/
 
-#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define SERVICE_UUID        "23a6cc2f-19ce-4108-a792-65d17bc0c958"
+#define CHARACTERISTIC_UUID "4ba5b87d-bcd6-4e13-beb1-b52c1fcc604f"
 
 class MyServerCallbacks : public BLEServerCallbacks {
     void onConnect(BLEServer *pServer) { deviceConnected = true; };
 
     void onDisconnect(BLEServer *pServer) { deviceConnected = false; }
 };
-// ---------------
+// --------------------------------------
 
 // Moisture sensor ----
 #define SIG GPIO_NUM_36
-int moisture;
+uint16_t readings_cache[CACHE_MAX];
+uint16_t average = 0;
+uint8_t  package[4]; // byte array for output, 4 because its two 16-bit
+                     // integers (4 bytes)
+uint8_t  count = 0;
 // --------------------
 
 void setup() {
@@ -82,15 +93,51 @@ void setup() {
         0x0); // set value to 0x00 to not advertise this parameter
     BLEDevice::startAdvertising();
     Serial.println("Waiting a client connection to notify...");
+
+    // Headers for the moisture readings lol
+    Serial.println("_________________________________");
+    Serial.println("|   average    |      current   |");
+    Serial.println("---------------------------------");
 }
 
 void loop() {
-    moisture = analogRead(SIG);
+    count++;
+
+    // Read moisture sensor
+    readings_cache[count - 1] = analogRead(
+        SIG); // No need to INDEX_WRAP because count would never be 0 here
+
+    // If certain number of readings have been made
+    if (count == CACHE_MAX) {
+
+        // Headers for the moisture readings lol
+        Serial.print("\033[3A");
+        Serial.println("_________________________________");
+        Serial.println("|   average    |      current   |");
+        Serial.println("---------------------------------");
+
+        // Get average of last 20 reads
+        uint32_t sum = 0;
+        for (int i = 0; i < count; i++) { sum += readings_cache[i]; }
+        average = sum / count;
+
+        // Reset
+        count = 0;
+    }
+
+    // Put readings in byte array in little-endian
+    package[0] = LOWERBYTE(average);
+    package[1] = UPPERBYTE(average);
+    package[2] = LOWERBYTE(readings_cache[INDEX_WRAP(count)]);
+    package[3] = UPPERBYTE(readings_cache[INDEX_WRAP(count)]);
+
+    Serial.printf("|     %i       |     %i      |\n", average,
+                  readings_cache[INDEX_WRAP(count)]);
+    Serial.print("\033[1A");
 
     if (deviceConnected) {
-        pCharacteristic->setValue(String(moisture));
+        pCharacteristic->setValue(package, sizeof(package));
         pCharacteristic->notify();
-        delay(500);
     }
 
     // disconnecting
