@@ -11,7 +11,7 @@
 #include <BLEUtils.h>
 #include <cstdint>
 
-#define BAUDRATE  115200
+#define BAUDRATE 115200
 
 // BLE -----------------------------------
 // See the following for generating UUIDs:
@@ -26,13 +26,15 @@
 uint16_t readings_cache[CACHE_MAX];
 uint16_t average = 0;
 uint8_t  package[sizeof(uint16_t) * 2];
-uint8_t  count = 0;
+uint8_t  count       = 0;
+uint8_t  cache_index = 0;
+uint32_t sum         = 0;
 // --------------------
 
 void setup() {
     Serial.begin(BAUDRATE);
 
-    setup_ble_notify(SERVICE_UUID, CHARACTERISTIC_UUID);
+    setup_ble_notify("ESP32", SERVICE_UUID, CHARACTERISTIC_UUID);
 
     analogSetAttenuation(ADC_11db); // ~3.3V input
     Serial.println("Waiting a client connection to notify...");
@@ -45,10 +47,12 @@ void setup() {
 
 void loop() {
     count++;
+    cache_index = INDEX_WRAP(count, CACHE_MAX);
 
     // Read moisture sensor
-    readings_cache[count - 1] = analogRead(
-        SIG); // No need to INDEX_WRAP because count would never be 0 here
+    readings_cache[cache_index] = analogRead(SIG);
+
+    sum += readings_cache[cache_index];
 
     // If certain number of readings have been made
     if (count == CACHE_MAX) {
@@ -60,21 +64,19 @@ void loop() {
         Serial.println("---------------------------------");
 
         // Get average of last 20 reads
-        uint32_t sum = 0;
-        for (int i = 0; i < count; i++) { sum += readings_cache[i]; }
         average = sum / count;
 
         // Reset
         count = 0;
+        sum   = 0;
     }
 
     // Put readings in byte array in little-endian
     u16_bytepack(package, sizeof(package), 0, average);
-    u16_bytepack(package, sizeof(package), 1,
-                 readings_cache[INDEX_WRAP(count)]);
+    u16_bytepack(package, sizeof(package), 1, readings_cache[cache_index]);
 
     Serial.printf("|     %i       |     %i      |\n", average,
-                  readings_cache[INDEX_WRAP(count)]);
+                  readings_cache[cache_index]);
     Serial.print("\033[1A");
 
     if (deviceConnected) {

@@ -11,9 +11,9 @@
 #include <stdbool.h>
 
 #define CACHE_MAX 10
-#define INDEX_WRAP(x)                                                          \
-    ((x + CACHE_MAX - 1) %                                                     \
-     CACHE_MAX) // makes sure than when the count resets to zero, the reading is
+#define INDEX_WRAP(x, index_max)                                               \
+    ((x + index_max - 1) %                                                     \
+     index_max) // makes sure than when the count resets to zero, the reading is
                 // still read from the last index
 #define LOWERBYTE(x) (x & 0xFF)
 #define UPPERBYTE(x) ((x >> 8) & 0xFF)
@@ -27,8 +27,9 @@ extern bool deviceConnected;
 extern bool oldDeviceConnected;
 extern bool clientWrote;
 
-void setup_ble_notify(const char *service_uuid,
+void setup_ble_notify(const char *name, const char *service_uuid,
                       const char *characteristic_uuid);
+
 void u16_bytepack(uint8_t cargo[], size_t sizeof_cargo, uint8_t index,
                   uint16_t package);
 

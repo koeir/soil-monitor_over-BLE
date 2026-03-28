@@ -26,11 +26,11 @@ class MyServerCallbacks : public BLEServerCallbacks {
     void onDisconnect(BLEServer *pServer) { deviceConnected = false; }
 };
 
-void setup_ble_notify(const char *service_uuid,
+void setup_ble_notify(const char *name, const char *service_uuid,
                       const char *characteristic_uuid) {
 
     // Create the BLE Device
-    BLEDevice::init("ESP32");
+    BLEDevice::init(name);
 
     // Create the BLE Server
     pServer = BLEDevice::createServer();
@@ -72,7 +72,7 @@ void setup_ble_notify(const char *service_uuid,
 void u16_bytepack(uint8_t cargo[], size_t sizeof_cargo, uint8_t index,
                   uint16_t package) {
     // x2 because its 2 bytes (16-bits) per packages
-    index = index * 2;
+    index *= 2;
 
     if (index + 1 >= sizeof_cargo) {
         Serial.println("Index exceeds size of cargo!");
