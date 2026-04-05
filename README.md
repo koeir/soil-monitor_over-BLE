@@ -4,6 +4,7 @@
 
 ## Hardware
 - x1 NodeMCU ESP-32S
+- x1 PH4502C-Sensor (pH and temperature)
 - x1 Capacitive Soil Moisture Sensor v2.0
 - Some jumper wires
 
